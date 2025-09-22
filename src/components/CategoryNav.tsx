@@ -1,49 +1,43 @@
 import { Button } from "@/components/ui/button";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-export type Category = {
+interface Category {
   id: string;
   name: string;
-  color: string;
-  icon: string;
-};
-
-export const categories: Category[] = [
-  { id: "all", name: "All", color: "professional", icon: "🛒" },
-  { id: "vegetables", name: "Vegetables", color: "professional", icon: "🥬" },
-  { id: "fruits", name: "Fruits", color: "professional", icon: "🍎" },
-  { id: "cakes", name: "Cakes", color: "professional", icon: "🎂" },
-  { id: "biscuits", name: "Biscuits", color: "professional", icon: "🍪" },
-  { id: "spices", name: "Spices", color: "professional", icon: "🌿" },
-];
-
-interface CategoryNavProps {
-  selectedCategory: string;
-  onCategoryChange: (category: string) => void;
+  slug: string;
 }
 
-export const CategoryNav = ({ selectedCategory, onCategoryChange }: CategoryNavProps) => {
+interface CategoryNavProps {
+  categories: Category[];
+  selectedCategory: string | null;
+  onCategorySelect: (categoryId: string | null) => void;
+}
+
+export const CategoryNav = ({ categories, selectedCategory, onCategorySelect }: CategoryNavProps) => {
   return (
-    <nav className="sticky top-14 md:top-16 z-40 w-full bg-background/95 backdrop-blur border-b">
-      <div className="container px-4 md:px-6 py-3 md:py-4">
-        <div className="flex space-x-2 overflow-x-auto scrollbar-hide pb-2">
+    <div className="border-b">
+      <ScrollArea className="w-full whitespace-nowrap">
+        <div className="flex p-4 space-x-2">
+          <Button
+            variant={selectedCategory === null ? "default" : "outline"}
+            onClick={() => onCategorySelect(null)}
+            className="flex-shrink-0"
+          >
+            All Products
+          </Button>
           {categories.map((category) => (
             <Button
               key={category.id}
               variant={selectedCategory === category.id ? "default" : "outline"}
-              size="sm"
-              className={`flex items-center space-x-1 md:space-x-2 whitespace-nowrap transition-all min-h-[36px] px-3 md:px-4 ${
-                selectedCategory === category.id
-                  ? "bg-professional hover:bg-professional-dark text-professional-foreground shadow-md"
-                  : "hover:bg-professional-light hover:text-professional-dark hover:border-professional"
-              }`}
-              onClick={() => onCategoryChange(category.id)}
+              onClick={() => onCategorySelect(category.id)}
+              className="flex-shrink-0"
             >
-              <span className="text-sm md:text-lg">{category.icon}</span>
-              <span className="text-xs md:text-sm font-medium">{category.name}</span>
+              {category.name}
             </Button>
           ))}
         </div>
-      </div>
-    </nav>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+    </div>
   );
 };

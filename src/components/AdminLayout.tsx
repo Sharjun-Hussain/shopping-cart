@@ -13,7 +13,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
   const location = useLocation();
 
   const navigation = [
-    { name: 'Products', href: '/', icon: Package },
+    { name: 'Products', href: '/manage', icon: Package },
     { name: 'Categories', href: '/categories', icon: Tag },
   ];
 
@@ -22,7 +22,7 @@ export const AdminLayout = ({ children }: AdminLayoutProps) => {
       <header className="border-b border-border bg-card">
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center space-x-8">
-            <h1 className="text-xl font-semibold">Admin Dashboard</h1>
+            <h1 className="text-xl font-semibold">Management Dashboard</h1>
             <nav className="flex space-x-4">
               {navigation.map((item) => {
                 const Icon = item.icon;

@@ -144,7 +144,7 @@ const Index = () => {
                   </div>
                 </CardTitle>
                 <CardDescription>
-                  ${product.price} per {product.unit}
+                  LKR {product.price} per {product.unit}
                 </CardDescription>
               </CardHeader>
               <CardContent>
