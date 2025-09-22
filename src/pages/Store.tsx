@@ -91,7 +91,7 @@ export const Store = () => {
   const handleCheckout = () => {
     toast({
       title: "Checkout",
-      description: "Checkout functionality would be implemented here.",
+      description: "Checkout .",
     });
     setIsCartOpen(false);
   };
