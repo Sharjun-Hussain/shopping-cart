@@ -1,135 +1,196 @@
-import { useState, useMemo } from "react";
-import { Header } from "@/components/Header";
-import { CategoryNav } from "@/components/CategoryNav";
-import { ProductGrid } from "@/components/ProductGrid";
-import { CartSheet } from "@/components/CartSheet";
-import { AuthDialog } from "@/components/AuthDialog";
-import { products } from "@/data/products";
-import { CartItem, Product } from "@/types/product";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, Edit, Trash2, Upload } from 'lucide-react';
+import { AdminLayout } from '@/components/AdminLayout';
+import { ProductForm } from '@/components/ProductForm';
+import { useProducts, Product } from '@/hooks/useProducts';
+import { useAuth } from '@/hooks/useAuth';
+import { seedProductsToDatabase } from '@/utils/seedData';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const { user, loading: authLoading } = useAuth();
+  const { products, categories, loading, createProduct, updateProduct, deleteProduct } = useProducts();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
-  const filteredProducts = useMemo(() => {
-    let filtered = products;
-    
-    // Filter by category
-    if (selectedCategory !== "all") {
-      filtered = filtered.filter(product => product.category === selectedCategory);
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
     }
-    
-    // Filter by search query
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    
-    return filtered;
-  }, [selectedCategory, searchQuery]);
+  }, [user, authLoading, navigate]);
 
-  const cartItemsCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-
-  const handleAddToCart = (product: Product, quantity: number) => {
-    setCartItems(prev => {
-      const existingItem = prev.find(item => item.id === product.id);
-      if (existingItem) {
-        return prev.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
-      }
-      return [...prev, { ...product, quantity }];
-    });
-  };
-
-  const handleUpdateQuantity = (id: string, quantity: number) => {
-    if (quantity <= 0) {
-      handleRemoveItem(id);
+  const handleSeedData = async () => {
+    if (products.length > 0) {
+      toast({
+        title: 'Data Already Exists',
+        description: 'Products already exist in the database',
+        variant: 'destructive',
+      });
       return;
     }
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, quantity } : item
-      )
+
+    setIsSeeding(true);
+    try {
+      const result = await seedProductsToDatabase();
+      toast({
+        title: 'Success',
+        description: `Seeded ${result.count} products to database`,
+      });
+      window.location.reload(); // Refresh to show new data
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to seed data',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const handleCreate = async (productData: any) => {
+    await createProduct(productData);
+  };
+
+  const handleUpdate = async (productData: any) => {
+    if (editingProduct) {
+      await updateProduct(editingProduct.id, productData);
+      setEditingProduct(null);
+    }
+  };
+
+  const handleEdit = (product: Product) => {
+    setEditingProduct(product);
+    setIsFormOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this product?')) {
+      await deleteProduct(id);
+    }
+  };
+
+  const handleCloseForm = () => {
+    setIsFormOpen(false);
+    setEditingProduct(null);
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
     );
-  };
+  }
 
-  const handleRemoveItem = (id: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
-    toast({
-      title: "Item removed",
-      description: "Item has been removed from your cart.",
-    });
-  };
-
-  const handleCheckout = () => {
-    toast({
-      title: "Checkout started",
-      description: "Redirecting to checkout page... (Feature coming soon!)",
-    });
-    setIsCartOpen(false);
-  };
+  if (!user) {
+    return null; // Will redirect to auth
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header
-        cartItemsCount={cartItemsCount}
-        onCartOpen={() => setIsCartOpen(true)}
-        onAuthOpen={() => setIsAuthOpen(true)}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-      />
-      
-      <CategoryNav
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-      />
-
-      <main className="container px-4 md:px-6 py-6 md:py-8">
-        <div className="mb-6 md:mb-8">
-          <h2 className="text-xl md:text-3xl font-bold mb-2">
-            {selectedCategory === "all" ? "All Products" : 
-             selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}
-          </h2>
-          <p className="text-sm md:text-base text-muted-foreground">
-            {searchQuery ? `Search results for "${searchQuery}"` : "Authentic Sri Lankan products delivered to your door"}
-          </p>
-          {searchQuery && (
-            <p className="text-xs md:text-sm text-muted-foreground mt-2">
-              Found {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}
-            </p>
-          )}
+    <AdminLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Products</h1>
+            <p className="text-muted-foreground">Manage your product inventory</p>
+          </div>
+          <div className="flex space-x-2">
+            {products.length === 0 && (
+              <Button variant="outline" onClick={handleSeedData} disabled={isSeeding}>
+                <Upload className="h-4 w-4 mr-2" />
+                {isSeeding ? 'Seeding...' : 'Seed Sample Data'}
+              </Button>
+            )}
+            <Button onClick={() => setIsFormOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Product
+            </Button>
+          </div>
         </div>
 
-        <ProductGrid
-          products={filteredProducts}
-          onAddToCart={handleAddToCart}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {products.map((product) => (
+            <Card key={product.id}>
+              <CardHeader>
+                <img 
+                  src={product.image} 
+                  alt={product.name}
+                  className="w-full h-48 object-cover rounded-lg mb-4"
+                />
+                <CardTitle className="flex justify-between items-start">
+                  <span>{product.name}</span>
+                  <div className="flex space-x-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(product)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(product.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardTitle>
+                <CardDescription>
+                  ${product.price} per {product.unit}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-2">{product.description}</p>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">
+                    Category: {product.category?.name || 'None'}
+                  </span>
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    product.in_stock 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {product.in_stock ? 'In Stock' : 'Out of Stock'}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {products.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-4">No products found</p>
+            <div className="space-x-2">
+              <Button onClick={handleSeedData} disabled={isSeeding}>
+                <Upload className="h-4 w-4 mr-2" />
+                {isSeeding ? 'Seeding...' : 'Seed Sample Data'}
+              </Button>
+              <Button onClick={() => setIsFormOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create your first product
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <ProductForm
+          product={editingProduct}
+          categories={categories}
+          isOpen={isFormOpen}
+          onClose={handleCloseForm}
+          onSubmit={editingProduct ? handleUpdate : handleCreate}
         />
-      </main>
-
-      <CartSheet
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cartItems={cartItems}
-        onUpdateQuantity={handleUpdateQuantity}
-        onRemoveItem={handleRemoveItem}
-        onCheckout={handleCheckout}
-      />
-
-      <AuthDialog
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-      />
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 
